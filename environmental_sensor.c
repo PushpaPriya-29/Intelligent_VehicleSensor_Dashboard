@@ -1,23 +1,11 @@
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
+
 #include <locale.h>
 #include <wchar.h>
-
-// Shared structure for environmental sensor data
-struct EnvData 
-{
-    float temp;
-    float humid;
-    float rain;
-    float fog;
-    int env_flag;
-};
-struct EnvData data;
+#include "headers.h"
+env data;
 pthread_mutex_t lock;
+cumulative* vehicleshm;
 void* temp_humid_sensor(void* arg) 
 {
     while (1) 
@@ -85,6 +73,7 @@ void* dashboard(void* arg)
         }
 
         wprintf(L"Environment Flag: %d\n", data.env_flag);
+        memcpy(&(vehicleshm->e),&data,sizeof(data));
         pthread_mutex_unlock(&lock);
         sleep(2);
     }
@@ -93,6 +82,17 @@ void* dashboard(void* arg)
 
 int main() {
     srand(time(NULL));
+    key_t vehicle_key=8108;
+	int vehicle_shmid=shmget(vehicle_key,sizeof(cumulative),0777|IPC_CREAT);
+	if(vehicle_shmid==-1){
+		printf("Error creatong shrd mem for vehicle");
+		return 1;
+	}
+	vehicleshm=(cumulative*)shmat(vehicle_shmid,NULL,0);
+	if(vehicleshm==(cumulative*)-1){
+		printf("Error attaching vehicle shm mem");
+		return 1;
+	}
     pthread_mutex_init(&lock, NULL);
 
     pthread_t temp_thread, rain_thread, fog_thread, dashboard_thread;
@@ -110,4 +110,3 @@ int main() {
     pthread_mutex_destroy(&lock);
     return 0;
 }
-

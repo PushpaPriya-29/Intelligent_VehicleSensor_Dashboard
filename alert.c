@@ -1,26 +1,14 @@
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
+
 #include <locale.h>
 #include <wchar.h>
 
+#include "headers.h"
 // Shared structure for sensor data and flags
-struct SensorData {
-    float tyre_pressure;
-    int pressure_flag;
-    float fuel_level;
-    int fuel_flag;
-    int engine_rpm;
-    float engine_temp;
-    int battery;
-    int engine_flag;
-};
 
-struct SensorData data;
 
+vehicle data;
+cumulative* vehicleshm;
 pthread_mutex_t lock;
 
 void* tyre_sensor(void* arg) {
@@ -46,7 +34,19 @@ void* fuel_sensor(void* arg) {
 }
 
 void* engine_sensor(void* arg) {
+	key_t vehicle_key=8108;
+	int vehicle_shmid=shmget(vehicle_key,sizeof(cumulative),0777|IPC_CREAT);
+	if(vehicle_shmid==-1){
+		perror("Error creatong shrd mem for vehicle\n");
+		return NULL;
+	}
+	vehicleshm=(cumulative*)shmat(vehicle_shmid,NULL,0);
+	if(vehicleshm==(cumulative*)-1){
+		perror("Error attaching vehicle shm mem\n");
+		return NULL;
+	}
     while (1) {
+    	
         pthread_mutex_lock(&lock);
         data.engine_rpm = ((float)rand() / RAND_MAX) * 9000;
         data.engine_temp = ((float)rand() / RAND_MAX) * 100;
@@ -60,6 +60,9 @@ void* engine_sensor(void* arg) {
         } else {
             data.engine_flag = 1;
         }
+        //vehicleshm=&data;
+        memcpy(&(vehicleshm->v),&data,sizeof(vehicle));
+        printf("\n\nFuel: %.2f Engine rpm: %d\n\n",vehicleshm->v.fuel_level,vehicleshm->v.engine_rpm);
         pthread_mutex_unlock(&lock);
         sleep(1);
     }
@@ -82,7 +85,8 @@ void* dashboard(void* arg) {
         wprintf(L" Battery: %d%%\n", data.battery);
         wprintf(L" Engine Flag: %d\n", data.engine_flag);
         if (data.engine_flag) wprintf(L" ALERT: Engine Condition Not Optimal! 🚨 SIREN ON\n");
-
+	
+	//wprintf(L"\n\nFuel: %.2f Engine rpm: %d\n\n",vehicleshm->fuel_level,vehicleshm->engine_rpm);
         pthread_mutex_unlock(&lock);
         sleep(2);
     }
@@ -91,6 +95,7 @@ void* dashboard(void* arg) {
 
 int main() {
     srand(time(NULL));
+    
     pthread_mutex_init(&lock, NULL);
 
     pthread_t tyre_thread, fuel_thread, engine_thread, dashboard_thread;
@@ -98,14 +103,13 @@ int main() {
     pthread_create(&tyre_thread, NULL, tyre_sensor, NULL);
     pthread_create(&fuel_thread, NULL, fuel_sensor, NULL);
     pthread_create(&engine_thread, NULL, engine_sensor, NULL);
-    pthread_create(&dashboard_thread, NULL, dashboard, NULL);
+    //pthread_create(&dashboard_thread, NULL, dashboard, NULL);
 
     pthread_join(tyre_thread, NULL);
     pthread_join(fuel_thread, NULL);
     pthread_join(engine_thread, NULL);
-    pthread_join(dashboard_thread, NULL);
+    //pthread_join(dashboard_thread, NULL);
 
     pthread_mutex_destroy(&lock);
     return 0;
 }
-

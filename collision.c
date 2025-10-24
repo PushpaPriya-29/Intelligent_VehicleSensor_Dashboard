@@ -4,7 +4,7 @@ sem_t channel_sem;
 collision c;
 autobrake a;
 int cruise_flag=0;
-
+cumulative* vehicleshm;
 void handler(int sig){
 	if(sig==SIGUSR1){
 		printf("Cruise control mode on.\n");
@@ -34,6 +34,7 @@ void* coll(void* arg){
             }
 			
 			printf("Distance:%f, speed:%f, flag:%d\n",c.distance,c.relativeSpeed,c.collisionflag);
+			memcpy(&(vehicleshm->c),&c,sizeof(c));
 			pthread_mutex_unlock(&data_lock);
 			sleep(1);
 		}
@@ -64,6 +65,7 @@ void* brake(void* arg){
 			a.brake_status=0;
 		}
 		printf("speed:%f, status:%d\n",c.relativeSpeed,a.brake_status);
+		memcpy(&(vehicleshm->a),&a,sizeof(a));
 		pthread_mutex_unlock(&data_lock);
 		sleep(1);
 	}
@@ -77,6 +79,7 @@ void* lane(void* arg){
 		if(l.laneflag==1){
 			printf("Lane deviation detected\n");
 		}
+		memcpy(&(vehicleshm->l),&l,sizeof(l));
 		sleep(5);
 	}
 }
@@ -84,6 +87,18 @@ void* lane(void* arg){
 
 int main(){
 	srand(time(NULL));
+	key_t vehicle_key=8108;
+	int vehicle_shmid=shmget(vehicle_key,sizeof(cumulative),0777|IPC_CREAT);
+	if(vehicle_shmid==-1){
+		printf("Error creatong shrd mem for vehicle");
+		return 1;
+	}
+	vehicleshm=(cumulative*)shmat(vehicle_shmid,NULL,0);
+	if(vehicleshm==(cumulative*)-1){
+		printf("Error attaching vehicle shm mem");
+		return 1;
+	}
+	
 	signal(SIGUSR1,handler);
 	pid_t pid = getpid();
 	int fd=open("cuise_collision_fifo",O_WRONLY);

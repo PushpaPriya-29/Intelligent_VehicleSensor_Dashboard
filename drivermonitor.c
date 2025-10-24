@@ -2,6 +2,7 @@
 drowsiness d;
 blind_spot bs;
 pthread_mutex_t lock;
+cumulative* vehicleshm;
 void* driver_drowsiness(void* arg){
 	
 	//srand(time(NULL));
@@ -17,7 +18,7 @@ void* driver_drowsiness(void* arg){
 			d.drowsy_flag=0;
 		}
 		printf("Eye closure: %.2f%% Yawn_level: %.2f%% Flag: %d\n",d.eye_closure,d.yawn,d.drowsy_flag);
-		
+		memcpy(&(vehicleshm->d),&d,sizeof(d));
 		pthread_mutex_unlock(&lock);
 		sleep(1);
 	}
@@ -38,7 +39,7 @@ void* blindspot(void*){
 			bs.blindspot_flag=0;
 		}
 		printf("Blindspot: %d %d Flag: %d\n",bs.leftblind,bs.rightblind,bs.blindspot_flag);
-		
+		memcpy(&(vehicleshm->bs),&bs,sizeof(bs));
 		pthread_mutex_unlock(&lock);
 		sleep(1);
 	}
@@ -46,6 +47,17 @@ void* blindspot(void*){
 }
 int main(){
 	srand(time(NULL));
+	key_t vehicle_key=8108;
+	int vehicle_shmid=shmget(vehicle_key,sizeof(cumulative),0777|IPC_CREAT);
+	if(vehicle_shmid==-1){
+		printf("Error creatong shrd mem for vehicle");
+		return 1;
+	}
+	vehicleshm=(cumulative*)shmat(vehicle_shmid,NULL,0);
+	if(vehicleshm==(cumulative*)-1){
+		printf("Error attaching vehicle shm mem");
+		return 1;
+	}
 	pthread_mutex_init(&lock,NULL);
 	pthread_t drowsy_thread,bspot_thread;
 	//while(1){

@@ -1,19 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
 
-// Structure to hold parking sensor data
-typedef struct {
-    float front_distance;   // cm
-    float rear_distance;    // cm
-    int parking_flag;       // 1 = parked safely, 0 = still moving
-} Parking;
+#include "headers.h"
+
+
 
 pthread_mutex_t lock;
 Parking park_data;
-
+cumulative* vehicleshm;
 // Function to generate random distances for front/rear sensors
 void* sensor_thread(void* arg) {
     unsigned int seed = time(NULL) ^ getpid();
@@ -37,7 +29,7 @@ void* assist_thread(void* arg) {
         float front = park_data.front_distance;
         float rear  = park_data.rear_distance;
         int parked  = park_data.parking_flag;
-
+	memcpy(&(vehicleshm->p),&park_data,sizeof(park_data));
         pthread_mutex_unlock(&lock);
 
         // Decision logic
@@ -69,7 +61,17 @@ void* assist_thread(void* arg) {
 int main() {
     srand(time(NULL));
     pthread_mutex_init(&lock, NULL);
-
+	key_t vehicle_key=8108;
+	int vehicle_shmid=shmget(vehicle_key,sizeof(cumulative),0777|IPC_CREAT);
+	if(vehicle_shmid==-1){
+		printf("Error creatong shrd mem for vehicle");
+		return 1;
+	}
+	vehicleshm=(cumulative*)shmat(vehicle_shmid,NULL,0);
+	if(vehicleshm==(cumulative*)-1){
+		printf("Error attaching vehicle shm mem");
+		return 1;
+	}
     park_data.front_distance = 100.0;
     park_data.rear_distance = 100.0;
     park_data.parking_flag = 0;
@@ -84,4 +86,3 @@ int main() {
     pthread_mutex_destroy(&lock);
     return 0;
 }
-
