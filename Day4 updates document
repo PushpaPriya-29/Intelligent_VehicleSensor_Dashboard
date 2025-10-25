@@ -1,0 +1,11 @@
+Day4 Updates:
+1.compiled and tested all the processes individually to integrated.
+2.created a structure combining all the structures of each module(just to pass the entire data into same shared memory).
+3.created a basic UI dashboard and fetched the data from all the processes using shared memory.
+3.modified all the processes to share the data into shared memory
+4.finalized the UI design which has 4 screens
+  ->screen 1: welcome screen (contains 2 buttons start,exit).
+  ->screen 2: input screen (displays the continuously monitored values in dahsboard and takes the user input of destination coordinates for gps navigation)
+  ->screen 3: Main dashboard (displays all the required information like alerts, navigation,speed,vehicle data,etc)
+  ->screen 4: Parking assisstance (Once the destination is reached the process is redirected to screen 4 where the dashboard assists the driver to park the vehicle safely)
+5.created a shared memory to send athe alert messages to the UI dashboard.
