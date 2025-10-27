@@ -1,0 +1,5 @@
+1. On day 5, we completed the UI dashboard using the nurses
+2. Rectified the minor errors pending in the dashboard
+3. Created a client and server programs in different systems
+4. From the client program the gps data is shared via sockets to the server program in different system
+5. The server progarm connects it to the web page and displays the data to the web page through another socket
